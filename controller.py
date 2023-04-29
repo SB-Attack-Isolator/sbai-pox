@@ -22,6 +22,15 @@ class Controller(EventMixin):
         self.DEFAULT_PRIORITY = 1
 
         self.mac_to_port = {}
+    
+    def block():
+        pass
+
+    def allow():
+        pass
+
+    def stat():
+        pass
 
     # You can write other functions as you need.
     def parse_policy_file(self, f):
