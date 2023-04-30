@@ -25,7 +25,7 @@ def set_lock(key, lock):
         _shared_var[key] = (value, lock)
         _lock.release()
 
-def set(key, value):
+def set_var(key, value):
     global _shared_var
     # get old lock object
     if key in _shared_var:
@@ -40,7 +40,7 @@ def set(key, value):
         _shared_var[key] = (value, lock)
         lock.release()
 
-def get(key, useLock = False):
+def get_var(key, useLock = False):
     global _shared_var
     # Lock
     _, lock = _shared_var[key]
