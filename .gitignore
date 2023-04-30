@@ -1,1 +1,3 @@
 *.sh
+!start_controller.sh
+!start_network.sh
