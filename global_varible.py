@@ -4,6 +4,8 @@ Author: Shenghua Chen
 Version: Aug 30th, 2023
 """
 
+ATTACKER_KEY = "attacker"
+
 def __init__():
     global _shared_var
     if not("_shared_var" in globals() and _shared_var is dict):
