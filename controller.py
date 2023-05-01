@@ -1,10 +1,11 @@
 from pox.core import core
-
 import pox.openflow.libopenflow_01 as of
-
 from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
 from pox.lib.addresses import IPAddr, EthAddr
+
+from global_varible import set_var, get_var
+from port_bingo import BingoThread, BingoMessage
 
 log = core.getLogger()
 
@@ -18,6 +19,7 @@ class Controller(EventMixin):
         self.DEFAULT_PRIORITY = 1
 
         self.mac_to_port = {}
+        self.bingo_thread = BingoThread(log)
     
     def block():
         pass
@@ -57,18 +59,20 @@ class Controller(EventMixin):
                 if self.mac_to_port[dpid].get(packet.dst) is None:
                     flood("Flood: Unknown dst")
                 else:
-                    log.info("Packet from [MAC: {}], current switch DPID: {} to [MAC: {}]".format(packet.src, dpid, packet.dst))
-                    
-                    # src_ip = None
-                    # dst_ip = None
-                    # if packet.type == packet.IP_TYPE:
-                    #     src_ip = packet.payload.srcip
-                    #     dst_ip = packet.payload.dstip
-                    #     log.info('IP: Packet from {} to {}'.format(src_ip, dst_ip))
-                    # elif packet.type == packet.ARP_TYPE:
-                    #     src_ip = packet.payload.protosrc
-                    #     dst_ip = packet.payload.protodst
-                    #     log.info('ARP: Packet from {} to {}'.format(src_ip, dst_ip))
+                    # log.info("Packet from [MAC: {}], current switch DPID: {} to [MAC: {}]".format(packet.src, dpid, packet.dst))
+                
+                    src_ip = None
+                    dst_ip = None
+                    ip_packet = packet.find('ipv4') or packet.find('ipv6')
+                    if ip_packet is not None:
+                        transport_packet = ip_packet.find('tcp') or ip_packet.find('udp')
+                        if transport_packet is not None:
+                            src_ip = ip_packet.srcip
+                            dst_ip = ip_packet.dstip
+                            dst_port = transport_packet.dstport
+                            # log.info('IP: Packet from {} to {}:{}'.format(src_ip, dst_ip, dst_port))
+                            msg = BingoMessage(src_ip=src_ip, dst_ip=dst_ip, dst_port=dst_port)
+                            self.bingo_thread.send_bingo_task(msg)
 
                     out_port = self.mac_to_port[dpid][packet.dst]
                     forward_packet(event, packet, out_port)
