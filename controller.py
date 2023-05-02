@@ -4,8 +4,9 @@ from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
 from pox.lib.addresses import IPAddr, EthAddr
 
-from global_varible import set_var, get_var
+from global_variable import set_var, get_var
 from port_bingo import BingoThread, BingoMessage
+from http_server import start_http_server
 
 log = core.getLogger()
 
@@ -20,6 +21,8 @@ class Controller(EventMixin):
 
         self.mac_to_port = {}
         self.bingo_thread = BingoThread(log)
+        self.bingo_thread.start_thread()
+        start_http_server(log)
     
     def block():
         pass
