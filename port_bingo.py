@@ -1,8 +1,9 @@
 import threading
 import time
 import Queue
-from global_variable import ATTACKER_KEY
+from global_variable import ATTACKER_KEY, CONTROLLER_MESSAGE_QUEUE_KEY, LOGGER_KEY
 import global_variable
+from util import *
 
 COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 115, 135, 139, 143, 194, 443, 445, 1433, 3306, 3389, 5632, 5900, 8080, 25565]
 DEFAULT_TIMEOUT = 5 # seconds
@@ -17,8 +18,7 @@ class BingoMessage:
 
 
 class BingoThread:
-    def __init__(self, logger):
-        self.log = logger
+    def __init__(self):
         self.message_queue = Queue.Queue()
         self.bingo_thread = threading.Thread(target=self.port_bingo_task)
         self.tracked_connections = {}
@@ -33,7 +33,7 @@ class BingoThread:
 
 
     def port_bingo_task(self):
-        self.log.info("Port bingo thread is running")
+        global_variable.get_var(LOGGER_KEY).info("Port bingo thread is running")
         while True:
             message = self.message_queue.get()
             if message == "exit":
@@ -57,11 +57,21 @@ class BingoThread:
 
                 ports = conn_info["ports"]
                 if len(ports) >= len(COMMON_PORTS) * self.threshold:
+                    if src_ip in attacker and attacker[src_ip]["status"] == BLOCKED:
+                        attacker[src_ip]["time"] = time.time()
+                        continue
+                    
                     attacker[src_ip] = {
                         "dst_ip": dst_ip,
-                        "time": time.time()
+                        "time": time.time(),
+                        "status": ATTACKER
                     }
-                    self.log.info("Attacker: {}".format(attacker))
+                    global_variable.get_var(LOGGER_KEY).info("Attacker: {}".format(attacker))
+
+                    # Send message to controller
+                    msg = FirewallMessage(src_ip, block=True)
+                    global_variable.get_var(CONTROLLER_MESSAGE_QUEUE_KEY).put(msg)
+
         global_variable.set_var(ATTACKER_KEY, attacker)
         threading.Timer(DETECTOR_INTERVAL, self.run_detector).start()
 

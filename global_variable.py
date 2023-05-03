@@ -4,7 +4,9 @@ Author: Shenghua Chen
 Version: Aug 30th, 2023
 """
 
+LOGGER_KEY = "logger"
 ATTACKER_KEY = "attacker"
+CONTROLLER_MESSAGE_QUEUE_KEY = "controller_message_queue"
 
 def __init__():
     global _shared_var

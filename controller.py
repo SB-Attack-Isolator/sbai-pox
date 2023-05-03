@@ -4,9 +4,14 @@ from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
 from pox.lib.addresses import IPAddr, EthAddr
 
-from global_variable import set_var, get_var
+from global_variable import ATTACKER_KEY, CONTROLLER_MESSAGE_QUEUE_KEY, LOGGER_KEY
+import global_variable
 from port_bingo import BingoThread, BingoMessage
 from http_server import start_http_server
+import Queue
+import threading
+import time
+from util import *
 
 log = core.getLogger()
 
@@ -14,24 +19,28 @@ class Controller(EventMixin):
     def __init__(self):
         self.listenTo(core.openflow)
         core.openflow_discovery.addListeners(self)
-        
+
         self.FIREWALL_PRIORITY = 200
         self.PACKET_PRIORITY = 100
         self.DEFAULT_PRIORITY = 1
 
+        self.dpid_to_event = {}
         self.mac_to_port = {}
-        self.bingo_thread = BingoThread(log)
+
+        global_variable.set_var(LOGGER_KEY, log)
+        # Used to communicate between threads and controller
+        global_variable.set_var(CONTROLLER_MESSAGE_QUEUE_KEY, Queue.Queue())
+
+        # Port bingo thread
+        self.bingo_thread = BingoThread()
         self.bingo_thread.start_thread()
-        start_http_server(log)
-    
-    def block():
-        pass
 
-    def allow():
-        pass
+        # Http server thread
+        start_http_server()
 
-    def stat():
-        pass
+        # Firewall thread
+        threading.Thread(target=self.modify_firewall_task).start()
+
 
     # You can write other functions as you need.
     def _handle_PacketIn(self, event):
@@ -63,7 +72,7 @@ class Controller(EventMixin):
                     flood("Flood: Unknown dst")
                 else:
                     # log.info("Packet from [MAC: {}], current switch DPID: {} to [MAC: {}]".format(packet.src, dpid, packet.dst))
-                
+                    
                     src_ip = None
                     dst_ip = None
                     ip_packet = packet.find('ipv4') or packet.find('ipv6')
@@ -95,3 +104,45 @@ class Controller(EventMixin):
         dpid = dpid_to_str(event.dpid)
         log.info("Switch %s has come up.", dpid)
         self.mac_to_port[dpid] = {}
+        self.dpid_to_event[dpid] = event
+
+
+    def modify_firewall_task(self):
+        while True:
+            q = global_variable.get_var(CONTROLLER_MESSAGE_QUEUE_KEY)
+            if q.empty():
+                time.sleep(1)
+                continue
+            message = q.get()
+            if message == "exit":
+                break
+            else:
+                if message.block:
+                    self.block(message.src_ip)
+                else:
+                    self.allow(message.src_ip)
+
+                attacker = global_variable.get_var(ATTACKER_KEY)
+                log.info("Attacker: {}".format(attacker))
+
+
+    def block(self, src_ip):
+        log.info("Block IP: {}".format(src_ip))
+        attacker = global_variable.get_var(ATTACKER_KEY)
+        if src_ip in attacker:
+            attacker[src_ip]['status'] = BLOCKED
+            global_variable.set_var(ATTACKER_KEY, attacker)
+
+            # TODO: modify firewall policy
+
+
+    def allow(self, src_ip):
+        log.info("Allow IP: {}".format(src_ip))
+        attacker = global_variable.get_var(ATTACKER_KEY)
+        if src_ip in attacker:
+            attacker[src_ip]['status'] = ALLOWED
+            global_variable.set_var(ATTACKER_KEY, attacker)
+
+            # TODO: modify firewall policy
+
+
