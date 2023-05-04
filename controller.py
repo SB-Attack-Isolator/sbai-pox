@@ -138,7 +138,7 @@ class Controller(EventMixin):
             attacker[src_ip]['status'] = BLOCKED
             global_variable.set_var(ATTACKER_KEY, attacker)
 
-            # TODO: modify firewall policy
+            # modify firewall policy to block traffic
             for dpid, event in self.dpid_to_event.items():
                 msg = of.ofp_flow_mod()
                 msg.match.dl_type = 0x0800
@@ -160,7 +160,7 @@ class Controller(EventMixin):
             # del attacker[attacker_ip]
             global_variable.set_var(ATTACKER_KEY, attacker)
 
-            # TODO: modify firewall policy
+            # modify firewall policy to allow traffic
             for dpid, event in self.dpid_to_event.items():
                 msg = of.ofp_flow_mod()
                 msg.match.dl_type = 0x0800
