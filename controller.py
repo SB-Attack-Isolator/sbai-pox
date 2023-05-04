@@ -22,7 +22,7 @@ class Controller(EventMixin):
 
         self.FIREWALL_PRIORITY = 200
         self.PACKET_PRIORITY = 100
-        self.DEFAULT_PRIORITY = 1
+        self.DEFAULT_PRIORITY = 65535
 
         self.dpid_to_event = {}
         self.mac_to_port = {}
@@ -161,6 +161,14 @@ class Controller(EventMixin):
             global_variable.set_var(ATTACKER_KEY, attacker)
 
             # TODO: modify firewall policy
+            for dpid, event in self.dpid_to_event.items():
+                msg = of.ofp_flow_mod()
+                msg.match.dl_type = 0x0800
+                msg.match.nw_proto = 6
+                msg.priority = self.DEFAULT_PRIORITY
+                msg.match.nw_src = IPAddr(src_ip)
+                msg.actions = [of.ofp_action_output(port = of.OFPP_NORMAL)]
+                event.connection.send(msg)
 
         print_log("Attacker: {}".format(attacker))
         global_variable.release_var(ATTACKER_KEY)
