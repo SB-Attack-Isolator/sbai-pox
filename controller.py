@@ -139,7 +139,14 @@ class Controller(EventMixin):
             global_variable.set_var(ATTACKER_KEY, attacker)
 
             # TODO: modify firewall policy
-            
+            for dpid, event in self.dpid_to_event.items():
+                msg = of.ofp_flow_mod()
+                msg.match.dl_type = 0x0800
+                msg.match.nw_proto = 6
+                msg.priority = self.FIREWALL_PRIORITY
+                msg.match.nw_src = IPAddr(src_ip)
+                event.connection.send(msg)
+
         print_log("Attacker: {}".format(attacker))
         global_variable.release_var(ATTACKER_KEY)
 
