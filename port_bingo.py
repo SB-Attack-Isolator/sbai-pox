@@ -24,7 +24,9 @@ class BingoThread:
         self.tracked_connections = {}
 
         self.threshold = 0.8
+        global_variable.lock_var(ATTACKER_KEY)
         global_variable.set_var(ATTACKER_KEY, {})
+        global_variable.release_var(ATTACKER_KEY)
     
 
     def start_thread(self):
@@ -33,7 +35,7 @@ class BingoThread:
 
 
     def port_bingo_task(self):
-        global_variable.get_var(LOGGER_KEY).info("Port bingo thread is running")
+        print_log("Port bingo thread is running")
         while True:
             message = self.message_queue.get()
             if message == "exit":
@@ -44,6 +46,7 @@ class BingoThread:
     
 
     def run_detector(self):
+        global_variable.lock_var(ATTACKER_KEY)
         attacker = global_variable.get_var(ATTACKER_KEY)
         cur_time = time.time()
         for src_ip, d in self.tracked_connections.items():
@@ -61,18 +64,26 @@ class BingoThread:
                         attacker[src_ip]["time"] = time.time()
                         continue
                     
+                    if src_ip in attacker and attacker[src_ip]["dst_ip"] == dst_ip and attacker[src_ip]["status"] == ALLOWED:
+                        attacker[src_ip]["time"] = time.time()
+                        continue
+
                     attacker[src_ip] = {
                         "dst_ip": dst_ip,
                         "time": time.time(),
                         "status": ATTACKER
                     }
-                    global_variable.get_var(LOGGER_KEY).info("Attacker: {}".format(attacker))
+                    print_log("Attacker: {}".format(attacker))
 
                     # Send message to controller
+                    global_variable.lock_var(CONTROLLER_MESSAGE_QUEUE_KEY)
                     msg = FirewallMessage(src_ip, block=True)
                     global_variable.get_var(CONTROLLER_MESSAGE_QUEUE_KEY).put(msg)
+                    global_variable.release_var(CONTROLLER_MESSAGE_QUEUE_KEY)
 
         global_variable.set_var(ATTACKER_KEY, attacker)
+        global_variable.release_var(ATTACKER_KEY)
+        
         threading.Timer(DETECTOR_INTERVAL, self.run_detector).start()
 
 

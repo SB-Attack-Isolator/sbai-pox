@@ -27,9 +27,14 @@ class Controller(EventMixin):
         self.dpid_to_event = {}
         self.mac_to_port = {}
 
+        global_variable.lock_var(LOGGER_KEY)
         global_variable.set_var(LOGGER_KEY, log)
+        global_variable.release_var(LOGGER_KEY)
+
         # Used to communicate between threads and controller
+        global_variable.lock_var(CONTROLLER_MESSAGE_QUEUE_KEY)
         global_variable.set_var(CONTROLLER_MESSAGE_QUEUE_KEY, Queue.Queue())
+        global_variable.release_var(CONTROLLER_MESSAGE_QUEUE_KEY)
 
         # Port bingo thread
         self.bingo_thread = BingoThread()
@@ -102,14 +107,16 @@ class Controller(EventMixin):
 
     def _handle_ConnectionUp(self, event):
         dpid = dpid_to_str(event.dpid)
-        log.info("Switch %s has come up.", dpid)
+        print_log("Switch {} has come up.".format(dpid))
         self.mac_to_port[dpid] = {}
         self.dpid_to_event[dpid] = event
 
 
     def modify_firewall_task(self):
         while True:
+            global_variable.lock_var(CONTROLLER_MESSAGE_QUEUE_KEY)
             q = global_variable.get_var(CONTROLLER_MESSAGE_QUEUE_KEY)
+            global_variable.release_var(CONTROLLER_MESSAGE_QUEUE_KEY)
             if q.empty():
                 time.sleep(1)
                 continue
@@ -122,27 +129,32 @@ class Controller(EventMixin):
                 else:
                     self.allow(message.src_ip)
 
-                attacker = global_variable.get_var(ATTACKER_KEY)
-                log.info("Attacker: {}".format(attacker))
-
 
     def block(self, src_ip):
-        log.info("Block IP: {}".format(src_ip))
+        global_variable.lock_var(ATTACKER_KEY)
         attacker = global_variable.get_var(ATTACKER_KEY)
+        print_log("Block IP: {}".format(src_ip))
         if src_ip in attacker:
             attacker[src_ip]['status'] = BLOCKED
             global_variable.set_var(ATTACKER_KEY, attacker)
 
             # TODO: modify firewall policy
+            
+        print_log("Attacker: {}".format(attacker))
+        global_variable.release_var(ATTACKER_KEY)
 
 
     def allow(self, src_ip):
-        log.info("Allow IP: {}".format(src_ip))
+        global_variable.lock_var(ATTACKER_KEY)
         attacker = global_variable.get_var(ATTACKER_KEY)
+        print_log("Allow IP: {}".format(src_ip))
         if src_ip in attacker:
             attacker[src_ip]['status'] = ALLOWED
+            # del attacker[attacker_ip]
             global_variable.set_var(ATTACKER_KEY, attacker)
 
             # TODO: modify firewall policy
 
+        print_log("Attacker: {}".format(attacker))
+        global_variable.release_var(ATTACKER_KEY)
 

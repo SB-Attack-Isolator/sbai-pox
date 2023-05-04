@@ -12,22 +12,22 @@ def index():
 
 @bottle.route('/attackers')
 def get_attacker():
+    global_variable.lock_var(ATTACKER_KEY)
     attacker = global_variable.get_var(ATTACKER_KEY)
+    global_variable.release_var(ATTACKER_KEY)
     return attacker
 
 
 @bottle.route('/attackers', method='POST')
 def attacker_is_fixed():
     attacker_ip = bottle.request.forms.get('attacker_ip')
-    attacker = global_variable.get_var(ATTACKER_KEY)
-    if attacker_ip in attacker:
-        del attacker[attacker_ip]
-        global_variable.set_var(ATTACKER_KEY, attacker)
 
-        # Send message to controller
-        msg = FirewallMessage(attacker_ip, block=False)
-        global_variable.get_var(CONTROLLER_MESSAGE_QUEUE_KEY).put(msg)
-
+    # Send message to controller
+    global_variable.lock_var(CONTROLLER_MESSAGE_QUEUE_KEY)
+    msg = FirewallMessage(attacker_ip, block=False)
+    global_variable.get_var(CONTROLLER_MESSAGE_QUEUE_KEY).put(msg)
+    global_variable.release_var(CONTROLLER_MESSAGE_QUEUE_KEY)
+    
     return "OK"
 
 
@@ -35,5 +35,5 @@ def start_http_server():
     def run_server():
         bottle.run(host='0.0.0.0', port=8081)
     
-    global_variable.get_var(LOGGER_KEY).info("HTTP server is running")
+    print_log("HTTP server is running")
     threading.Thread(target=run_server).start()
