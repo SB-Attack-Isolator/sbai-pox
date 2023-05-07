@@ -150,9 +150,7 @@ class Controller(EventMixin):
 
     def block(self, src_ip):
         src_ip_object = IPAddr(src_ip)
-        local_attack = False
-        if self._in_network(src_ip_object):
-            local_attack = True
+        local_attack = self._in_network(src_ip_object)
         
         global_variable.lock_var(ATTACKER_KEY)
         attacker = global_variable.get_var(ATTACKER_KEY)
@@ -206,7 +204,7 @@ class Controller(EventMixin):
                         msg.command = of.OFPFC_DELETE_STRICT
                         msg.match.dl_type = 0x0800
                         msg.match.nw_proto = 6
-                        msg.priority = self.DEFAULT_PRIORITY
+                        msg.priority = self.FIREWALL_PRIORITY
                         msg.match.nw_src = src_ip_object
                         msg.match.nw_dst = net
                         # msg.actions = [of.ofp_action_output(port = of.OFPP_NORMAL)]
@@ -217,7 +215,7 @@ class Controller(EventMixin):
                     msg.command = of.OFPFC_DELETE_STRICT
                     msg.match.dl_type = 0x0800
                     msg.match.nw_proto = 6
-                    msg.priority = self.DEFAULT_PRIORITY
+                    msg.priority = self.FIREWALL_PRIORITY
                     msg.match.nw_src = src_ip_object
                     # msg.actions = [of.ofp_action_output(port = of.OFPP_NORMAL)]
                     event.connection.send(msg)
