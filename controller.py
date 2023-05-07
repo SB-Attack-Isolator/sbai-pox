@@ -164,7 +164,7 @@ class Controller(EventMixin):
                     for net in self.lans:
                         msg = of.ofp_flow_mod()
                         msg.match.dl_type = 0x0800
-                        msg.match.nw_proto = 6
+                        # msg.match.nw_proto = 6
                         msg.priority = self.FIREWALL_PRIORITY
                         msg.match.nw_src = src_ip_object
                         msg.match.nw_dst = net
@@ -173,7 +173,7 @@ class Controller(EventMixin):
                 for _, event in self.dpid_to_event.items():
                     msg = of.ofp_flow_mod()
                     msg.match.dl_type = 0x0800
-                    msg.match.nw_proto = 6
+                    # msg.match.nw_proto = 6
                     msg.priority = self.FIREWALL_PRIORITY
                     msg.match.nw_src = src_ip_object
                     event.connection.send(msg)
@@ -184,9 +184,7 @@ class Controller(EventMixin):
 
     def allow(self, src_ip):
         src_ip_object = IPAddr(src_ip)
-        local_attack = False
-        if self._in_network(src_ip_object):
-            local_attack = True
+        local_attack = self._in_network(src_ip_object)
 
         global_variable.lock_var(ATTACKER_KEY)
         attacker = global_variable.get_var(ATTACKER_KEY)
@@ -203,7 +201,7 @@ class Controller(EventMixin):
                         msg = of.ofp_flow_mod()
                         msg.command = of.OFPFC_DELETE_STRICT
                         msg.match.dl_type = 0x0800
-                        msg.match.nw_proto = 6
+                        # msg.match.nw_proto = 6
                         msg.priority = self.FIREWALL_PRIORITY
                         msg.match.nw_src = src_ip_object
                         msg.match.nw_dst = net
@@ -214,7 +212,7 @@ class Controller(EventMixin):
                     msg = of.ofp_flow_mod()
                     msg.command = of.OFPFC_DELETE_STRICT
                     msg.match.dl_type = 0x0800
-                    msg.match.nw_proto = 6
+                    # msg.match.nw_proto = 6
                     msg.priority = self.FIREWALL_PRIORITY
                     msg.match.nw_src = src_ip_object
                     # msg.actions = [of.ofp_action_output(port = of.OFPP_NORMAL)]
