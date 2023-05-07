@@ -3,7 +3,9 @@ Concept Validation of Software Based Attack Isolator
 * Mininet version: Python3
 * Pox version: fangtooth
 
-* Terminal1: start controller: ```bash start_controller.sh```
-    * may need to install bottle: ```pip install bottle```
+* Step1: clone this repo recursively: ```git clone --recurse-submodules https://github.com/SB-Attack-Isolator/sbai-pox.git```
 
-* Terminal2: start network: ```bash start_network.sh```
+* Step2: start the SBAI system
+    * Terminal1: start controller: ```bash start_controller.sh```
+        * may need to install bottle: ```pip install bottle```
+    * Terminal2: start network: ```bash start_network.sh```
