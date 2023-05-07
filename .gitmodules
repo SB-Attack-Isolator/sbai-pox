@@ -1,0 +1,7 @@
+[submodule "pox"]
+	path = pox
+	url = https://github.com/noxrepo/pox.git
+	branch = fangtooth
+[submodule "topo/mininet"]
+	path = topo/mininet
+	url = https://github.com/mininet/mininet.git

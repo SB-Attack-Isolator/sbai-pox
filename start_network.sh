@@ -1,4 +1,4 @@
-PYTHON=python2
+PYTHON=python3
 
 sudo mn -c
 cd ./topo/

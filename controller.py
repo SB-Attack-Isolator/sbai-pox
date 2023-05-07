@@ -15,6 +15,8 @@ from util import *
 
 log = core.getLogger()
 
+
+
 class Controller(EventMixin):
     def __init__(self):
         self.listenTo(core.openflow)
@@ -46,6 +48,22 @@ class Controller(EventMixin):
         # Firewall thread
         threading.Thread(target=self.modify_firewall_task).start()
 
+        # Load LAN info
+        self.lans = []
+        
+        f = open("lan_info.in", "r")
+        dat = f.read().split()
+        net_count = int(dat[0])
+        for netstr in dat[1:]:
+            addr,mask = netstr.split('/')
+            self.lans.append((IPAddr(addr),int(mask)))
+        f.close()
+
+    def _in_network(self, ipaddr):
+        for network in self.lans:
+            if ipaddr.inNetwork(network):
+                return True
+        return False
 
     # You can write other functions as you need.
     def _handle_PacketIn(self, event):
@@ -131,27 +149,47 @@ class Controller(EventMixin):
 
 
     def block(self, src_ip):
+        src_ip_object = IPAddr(src_ip)
+        local_attack = False
+        if self._in_network(src_ip_object):
+            local_attack = True
+        
         global_variable.lock_var(ATTACKER_KEY)
         attacker = global_variable.get_var(ATTACKER_KEY)
         print_log("Block IP: {}".format(src_ip))
         if src_ip in attacker:
             attacker[src_ip]['status'] = BLOCKED
             global_variable.set_var(ATTACKER_KEY, attacker)
-
             # modify firewall policy to block traffic
-            for dpid, event in self.dpid_to_event.items():
-                msg = of.ofp_flow_mod()
-                msg.match.dl_type = 0x0800
-                msg.match.nw_proto = 6
-                msg.priority = self.FIREWALL_PRIORITY
-                msg.match.nw_src = IPAddr(src_ip)
-                event.connection.send(msg)
+            if local_attack:
+                for _, event in self.dpid_to_event.items():
+                    for net in self.lans:
+                        msg = of.ofp_flow_mod()
+                        msg.match.dl_type = 0x0800
+                        msg.match.nw_proto = 6
+                        msg.priority = self.FIREWALL_PRIORITY
+                        msg.match.nw_src = src_ip_object
+                        msg.match.nw_dst = net
+                        event.connection.send(msg)
+            else:
+                for _, event in self.dpid_to_event.items():
+                    msg = of.ofp_flow_mod()
+                    msg.match.dl_type = 0x0800
+                    msg.match.nw_proto = 6
+                    msg.priority = self.FIREWALL_PRIORITY
+                    msg.match.nw_src = src_ip_object
+                    event.connection.send(msg)
 
         print_log("Attacker: {}".format(attacker))
         global_variable.release_var(ATTACKER_KEY)
 
 
     def allow(self, src_ip):
+        src_ip_object = IPAddr(src_ip)
+        local_attack = False
+        if self._in_network(src_ip_object):
+            local_attack = True
+
         global_variable.lock_var(ATTACKER_KEY)
         attacker = global_variable.get_var(ATTACKER_KEY)
         print_log("Allow IP: {}".format(src_ip))
@@ -161,14 +199,28 @@ class Controller(EventMixin):
             global_variable.set_var(ATTACKER_KEY, attacker)
 
             # modify firewall policy to allow traffic
-            for dpid, event in self.dpid_to_event.items():
-                msg = of.ofp_flow_mod()
-                msg.match.dl_type = 0x0800
-                msg.match.nw_proto = 6
-                msg.priority = self.DEFAULT_PRIORITY
-                msg.match.nw_src = IPAddr(src_ip)
-                msg.actions = [of.ofp_action_output(port = of.OFPP_NORMAL)]
-                event.connection.send(msg)
+            if local_attack:
+                for _, event in self.dpid_to_event.items():
+                    for net in self.lans:
+                        msg = of.ofp_flow_mod()
+                        msg.command = of.OFPFC_DELETE_STRICT
+                        msg.match.dl_type = 0x0800
+                        msg.match.nw_proto = 6
+                        msg.priority = self.DEFAULT_PRIORITY
+                        msg.match.nw_src = src_ip_object
+                        msg.match.nw_dst = net
+                        # msg.actions = [of.ofp_action_output(port = of.OFPP_NORMAL)]
+                        event.connection.send(msg)
+            else:
+                for _, event in self.dpid_to_event.items():
+                    msg = of.ofp_flow_mod()
+                    msg.command = of.OFPFC_DELETE_STRICT
+                    msg.match.dl_type = 0x0800
+                    msg.match.nw_proto = 6
+                    msg.priority = self.DEFAULT_PRIORITY
+                    msg.match.nw_src = src_ip_object
+                    # msg.actions = [of.ofp_action_output(port = of.OFPP_NORMAL)]
+                    event.connection.send(msg)
 
         print_log("Attacker: {}".format(attacker))
         global_variable.release_var(ATTACKER_KEY)

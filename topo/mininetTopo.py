@@ -16,11 +16,12 @@ from mininet.node import RemoteController
 
 net = None
 
-class TreeTopo(Topo):		
+
+class TreeTopo(Topo):
     def __init__(self):
-		# Initialize topology
+        # Initialize topology
         Topo.__init__(self)
-    
+
     def getContents(self, contents):
         hosts = contents[0]
         switch = contents[1]
@@ -40,20 +41,21 @@ class TreeTopo(Topo):
         print("linksInfo: " + str(linksInfo))
         # Add switch
         for x in range(1, int(switch) + 1):
-	        sconfig = {'dpid': "%016x" % x}
-	        self.addSwitch('s%d' % x, **sconfig)
+            sconfig = {'dpid': "%016x" % x}
+            self.addSwitch('s%d' % x, **sconfig)
         # Add hosts
         for y in range(1, int(host) + 1):
-	        ip = '10.0.0.%d/8' % y
-	        self.addHost('h%d' % y, ip=ip)
+            ip = '10.0.0.%d/8' % y
+            self.addHost('h%d' % y, ip=ip)
 
         # Add Links
         for x in range(int(link)):
-	        info = linksInfo[x].split(',')
-	        host = info[0]
-	        switch = info[1]
-	        bandwidth = int(info[2])
-	        self.addLink(host, switch, bw=bandwidth)
+            info = linksInfo[x].split(',')
+            host = info[0]
+            switch = info[1]
+            bandwidth = int(info[2])
+            self.addLink(host, switch, bw=bandwidth)
+
 
 def startNetwork():
     info('** Creating the tree network\n')
@@ -61,8 +63,9 @@ def startNetwork():
     controllerIP = '0.0.0.0'
 
     global net
-    net = Mininet(topo=topo, link = TCLink,
-                  controller=lambda name: RemoteController(name, ip=controllerIP),
+    net = Mininet(topo=topo, link=TCLink,
+                  controller=lambda name: RemoteController(
+                      name, ip=controllerIP),
                   listenPort=6633, autoSetMacs=True)
 
     info('** Starting the network\n')
@@ -74,12 +77,14 @@ def startNetwork():
     info('** Running CLI\n')
     CLI(net)
 
+
 def stopNetwork():
     if net is not None:
         net.stop()
         # Remove QoS and Queues
         os.system('sudo ovs-vsctl --all destroy Qos')
         os.system('sudo ovs-vsctl --all destroy Queue')
+
 
 if __name__ == '__main__':
     # Force cleanup on exit by registering a cleanup function

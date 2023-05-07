@@ -1,21 +1,21 @@
 import bottle
 import threading
-from global_variable import ATTACKER_KEY, CONTROLLER_MESSAGE_QUEUE_KEY, LOGGER_KEY
+from global_variable import ATTACKER_KEY, CONTROLLER_MESSAGE_QUEUE_KEY
 import global_variable
 from util import *
+import json
 
 
 @bottle.route('/')
 def index():
-    return "Hello, World!"
+    return bottle.static_file("index.htm","./")
 
 
 @bottle.route('/attackers')
 def get_attacker():
-    global_variable.lock_var(ATTACKER_KEY)
-    attacker = global_variable.get_var(ATTACKER_KEY)
-    global_variable.release_var(ATTACKER_KEY)
-    return attacker
+    attacker = global_variable.get_var(ATTACKER_KEY,useLock = True)
+    bottle.response.content_type = "application/json"
+    return json.dumps(attacker)
 
 
 @bottle.route('/attackers', method='POST')
@@ -28,7 +28,9 @@ def attacker_is_fixed():
     global_variable.get_var(CONTROLLER_MESSAGE_QUEUE_KEY).put(msg)
     global_variable.release_var(CONTROLLER_MESSAGE_QUEUE_KEY)
     
-    return "OK"
+    bottle.response.content_type = "application/json"
+    
+    return json.dumps({"message":"OK"})
 
 
 def start_http_server():
